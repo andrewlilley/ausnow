@@ -1,0 +1,85 @@
+name: nowcast
+
+on:
+  schedule:
+    # 02:05 UTC weekdays = 12:05 Sydney (AEST) / 13:05 (AEDT) — safely after
+    # the ABS 11:30 Sydney release window year-round (GitHub cron is UTC and
+    # can jitter by several minutes).
+    - cron: "5 2 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "data/manual/nab/**"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: nowcast
+  cancel-in-progress: false
+
+jobs:
+  nowcast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            cran::readabs
+            cran::readrba
+            cran::dplyr
+            cran::tidyr
+            cran::readxl
+            cran::jsonlite
+            cran::testthat
+            cran::zoo
+            cran::purrr
+            cran::stringr
+
+      - name: Run tests
+        run: Rscript tests/run_tests.R
+
+      - name: Run nowcast pipeline
+        run: Rscript scripts/run_nowcast.R
+
+      - name: Commit state
+        run: |
+          git config user.name "ausnow-bot"
+          git config user.email "ausnow-bot@users.noreply.github.com"
+          git add data site docs
+          if git diff --cached --quiet; then
+            echo "No state changes to commit."
+          else
+            git commit -m "nowcast run $(date -u +%F)"
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: nowcast
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

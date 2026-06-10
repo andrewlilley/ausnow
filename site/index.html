@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AusNow — Australian GDP nowcast</title>
+<meta name="description" content="A release-by-release nowcast of Australian quarterly real GDP growth, updated automatically from ABS data.">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --ink: #1a2433; --muted: #5d6b7e; --faint: #8b97a8; --rule: #d8dee7;
+    --bg: #fbfaf7; --card: #ffffff; --navy: #16406e; --blue: #4f86c6;
+    --red: #a63d40; --up: #1c7c54; --down: #a63d40; --amber: #9a6700;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px 64px; }
+  header { border-bottom: 3px double var(--rule); padding: 28px 0 14px; margin-bottom: 22px; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-size: 30px; margin: 0; letter-spacing: .2px; }
+  h1 .au { color: var(--navy); }
+  .tagline { color: var(--muted); margin-top: 4px; font-size: 14px; }
+  .stamp { color: var(--faint); font-size: 12.5px; margin-top: 6px; }
+  h2 { font-family: Georgia, serif; font-size: 19px; margin: 36px 0 10px; }
+  .cards { display: flex; gap: 16px; flex-wrap: wrap; }
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
+          padding: 18px 20px 14px; flex: 1 1 290px; min-width: 270px; }
+  .card .q { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  .card .big { font-family: Georgia, serif; font-size: 44px; line-height: 1.1; margin: 2px 0; }
+  .card .big small { font-size: 20px; color: var(--muted); }
+  .band { color: var(--faint); font-size: 12.5px; }
+  .delta { font-size: 13px; font-weight: 600; }
+  .delta.up { color: var(--up); } .delta.down { color: var(--down); } .delta.flat { color: var(--faint); }
+  .reads { display: flex; gap: 18px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rule); }
+  .reads div { font-size: 12.5px; color: var(--muted); }
+  .reads b { display: block; font-size: 17px; color: var(--ink); font-weight: 600; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px;
+           border: 1px solid var(--rule); color: var(--muted); margin-left: 6px; vertical-align: middle; }
+  .badge.warn { color: var(--amber); border-color: var(--amber); }
+  .chart { width: 100%; height: 380px; background: var(--card); border: 1px solid var(--rule); border-radius: 6px; }
+  .chart.short { height: 300px; }
+  .tabs { margin: 0 0 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .tabs button { font: 13px inherit; padding: 4px 12px; border-radius: 14px; cursor: pointer;
+                 border: 1px solid var(--rule); background: var(--card); color: var(--muted); }
+  .tabs button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .tabs select { font: 13px inherit; padding: 4px 8px; border: 1px solid var(--rule);
+                 border-radius: 4px; background: var(--card); color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--rule); border-radius: 6px; font-size: 13.5px; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .6px;
+       color: var(--faint); padding: 9px 12px; border-bottom: 2px solid var(--rule); }
+  td { padding: 7px 12px; border-bottom: 1px solid #eef1f5; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .imp.up { color: var(--up); font-weight: 600; } .imp.down { color: var(--down); font-weight: 600; }
+  .strip { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip { background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
+          padding: 8px 14px; font-size: 13px; }
+  .chip .d { color: var(--navy); font-weight: 600; font-size: 12px; }
+  .chip.nab-ok { border-left: 3px solid var(--up); }
+  .chip.nab-wait { border-left: 3px solid var(--amber); }
+  .stale { background: #fff8e6; border: 1px solid #e6d9a8; border-radius: 6px;
+           padding: 8px 14px; font-size: 13px; color: var(--amber); margin-top: 10px; }
+  .note { color: var(--muted); font-size: 13.5px; }
+  .note a { color: var(--navy); }
+  footer { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--rule);
+           color: var(--faint); font-size: 12.5px; }
+  @media (max-width: 640px) {
+    .card .big { font-size: 36px; } .chart { height: 300px; } .chart.short { height: 240px; }
+    th, td { padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="au">Aus</span>Now</h1>
+    <div class="tagline">A running nowcast of Australian quarterly real GDP growth, updated release by release from ABS data — in the spirit of the Atlanta Fed's GDPNow.</div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <h2>How the nowcast has evolved</h2>
+  <div class="tabs" id="evoTabs"></div>
+  <div id="evoChart" class="chart"></div>
+
+  <h2>What moved the estimate</h2>
+  <div style="overflow-x:auto"><table id="impTable">
+    <thead><tr><th>Date</th><th>Release</th><th>Quarter</th><th>Component</th>
+      <th style="text-align:right">Impact (pp)</th><th style="text-align:right">Nowcast after</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <h2>Component contributions <span class="note" id="contribQ"></span></h2>
+  <div id="contribChart" class="chart short"></div>
+
+  <h2>Upcoming releases</h2>
+  <div class="strip" id="upcoming"></div>
+  <div id="staleBox"></div>
+
+  <h2>Track record &amp; method</h2>
+  <p class="note">
+    The headline is a blend of two semi-independent reads on the same quarter: a
+    <b>labour read</b> (hours worked &times; trend productivity — available early) and an
+    <b>expenditure read</b> (bridge equations mapping ABS partials onto each GDP(E)
+    component — converges to the truth as partials arrive). The blend weight shifts
+    from the labour read to the expenditure read across the release cycle, as estimated
+    by backtest. Shaded bands are 80% intervals from pseudo-real-time backtest errors.
+    Full details: <a href="https://github.com/__REPO__/blob/main/docs/methodology.md">methodology</a>,
+    <a href="https://github.com/__REPO__/blob/main/docs/data_dictionary.md">data dictionary</a>.
+  </p>
+  <div id="btChart" class="chart short"></div>
+  <div style="height:12px"></div>
+  <div id="wChart" class="chart short"></div>
+
+  <div id="archiveBox"></div>
+
+  <footer>
+    Source data: Australian Bureau of Statistics (ABS), Reserve Bank of Australia, NAB.
+    All estimates are model output, not official statistics, and come with no warranty.
+    Built automatically by <a href="https://github.com/__REPO__">AusNow</a>.
+  </footer>
+</div>
+
+<script>
+const DATA = {"generated":"2026-06-10 21:44 +12","run_date":"2026-06-10","last_published":{"quarter":"2026Q1","quarter_pretty":"Q1 2026","growth":0.27},"cards":[{"quarter":"2026Q2","quarter_pretty":"Q2 2026","status":"current","model_only":false,"blend":0.9618,"labour":1.0956,"expenditure":-0.0967,"w_labour":0.8878,"band":0.495,"change":null,"days_to_release":84,"release_date":"2026-09-02","months_hours":1,"run_date":"2026-06-10"}],"evolution":[{"quarter":"2026Q2","quarter_pretty":"Q2 2026","dates":"2026-06-10","blend":0.9618,"labour":1.0956,"expenditure":-0.0967,"band":0.495,"outcome":{},"release_date":"2026-09-02"}],"impacts":[{"run_date":"2026-06-10","publication_date":"2026-06-10","release":"National Accounts (GDP)","source_key":"natacc","kind":"new_data","target_quarter":"2026Q2","old_estimate":0.9618,"new_estimate":0.9618,"impact_pp":0,"component":"all"}],"contributions":{"quarter":"Q2 2026","labels":["Consumption","Dwellings","Transfer costs","Business inv.","Public cons.","Public inv.","Exports","Imports","Inventories","Discrepancy"],"values":[-0.5288,0.0381,-0.0115,0.1726,0.1853,0.0516,0.5058,-0.3838,-0.0649,-0.0509]},"upcoming":[{"title":"Consumer Price Index","date":"2026-06-24","estimated":false},{"title":"Monthly Household Spending Indicator","date":"2026-06-25","estimated":false},{"title":"Job Vacancies","date":"2026-06-25","estimated":false},{"title":"Labour Force","date":"2026-06-25","estimated":false}],"nab":{"available":false,"message":"NAB survey: awaiting this month's file"},"stale":[],"backtest":{},"weights":{},"archived":[]};
+const fmt = (x, s) => x == null || isNaN(x) ? "–" : (s && x > 0 ? "+" : "") + Number(x).toFixed(2);
+const E = id => document.getElementById(id);
+const PALETTE = { blend: "#16406e", labour: "#4f86c6", exp: "#a63d40", outcome: "#1c7c54" };
+const charts = [];
+function mkChart(el) { const c = echarts.init(el, null, { renderer: "canvas" }); charts.push(c); return c; }
+addEventListener("resize", () => charts.forEach(c => c.resize()));
+
+/* ---- headline cards ---- */
+(function () {
+  const host = E("cards");
+  if (!DATA.cards || !DATA.cards.length) {
+    host.innerHTML = '<div class="card"><div class="q">No live target quarter</div><div class="note">The latest national accounts cover ' +
+      DATA.last_published.quarter_pretty + ' (' + fmt(DATA.last_published.growth, true) + '% q/q).</div></div>';
+    return;
+  }
+  for (const c of DATA.cards) {
+    const d = document.createElement("div"); d.className = "card";
+    const deltaCls = c.change == null ? "flat" : c.change > 0.0005 ? "up" : c.change < -0.0005 ? "down" : "flat";
+    const deltaTxt = c.change == null ? "first estimate" :
+      (c.change > 0.0005 ? "▲" : c.change < -0.0005 ? "▼" : "•") + " " + fmt(c.change, true) + " pp since previous run";
+    d.innerHTML =
+      '<div class="q">' + c.quarter_pretty + " · " + (c.status === "current" ? "current quarter" : "awaiting ABS release") +
+      (c.model_only ? '<span class="badge warn">model-only</span>' : "") + "</div>" +
+      '<div class="big">' + fmt(c.blend, true) + "<small> % q/q</small></div>" +
+      '<div class="band">80% band ±' + Number(c.band).toFixed(2) + ' pp · ABS release ' + c.release_date + "</div>" +
+      '<div class="delta ' + deltaCls + '">' + deltaTxt + "</div>" +
+      '<div class="reads"><div>Labour read<b>' + fmt(c.labour, true) + "%</b></div>" +
+      "<div>Expenditure read<b>" + fmt(c.expenditure, true) + "%</b></div>" +
+      "<div>Weight on labour<b>" + Math.round(c.w_labour * 100) + "%</b></div></div>";
+    host.appendChild(d);
+  }
+})();
+E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS print: " +
+  DATA.last_published.quarter_pretty + " " + fmt(DATA.last_published.growth, true) + "% q/q";
+
+/* ---- evolution chart with quarter tabs + archive selector ---- */
+(function () {
+  const evos = DATA.evolution || [];
+  if (!evos.length) return;
+  const live = new Set((DATA.cards || []).map(c => c.quarter));
+  const liveEvos = evos.filter(e => live.has(e.quarter)).reverse();
+  const archived = evos.filter(e => !live.has(e.quarter)).reverse();
+  const chart = mkChart(E("evoChart"));
+  const impactsByDate = {};
+  for (const r of (DATA.impacts || [])) {
+    (impactsByDate[r.target_quarter + "|" + r.run_date] ||= []).push(r);
+  }
+  function draw(e) {
+    const bandLo = e.blend.map((b, i) => b == null || e.band[i] == null ? null : b - e.band[i]);
+    const bandW = e.blend.map((b, i) => b == null || e.band[i] == null ? null : 2 * e.band[i]);
+    const series = [
+      { name: "band-base", type: "line", data: e.dates.map((d, i) => [d, bandLo[i]]), stack: "band",
+        lineStyle: { opacity: 0 }, symbol: "none", silent: true, tooltip: { show: false } },
+      { name: "80% band", type: "line", data: e.dates.map((d, i) => [d, bandW[i]]), stack: "band",
+        lineStyle: { opacity: 0 }, symbol: "none", silent: true,
+        areaStyle: { color: "rgba(22,64,110,0.07)" }, tooltip: { show: false } },
+      { name: "Labour read", type: "line", data: e.dates.map((d, i) => [d, e.labour[i]]),
+        lineStyle: { width: 1.2, type: "dashed", color: PALETTE.labour }, itemStyle: { color: PALETTE.labour }, symbolSize: 3 },
+      { name: "Expenditure read", type: "line", data: e.dates.map((d, i) => [d, e.expenditure[i]]),
+        lineStyle: { width: 1.2, type: "dashed", color: PALETTE.exp }, itemStyle: { color: PALETTE.exp }, symbolSize: 3 },
+      { name: "AusNow blend", type: "line", data: e.dates.map((d, i) => [d, e.blend[i]]),
+        lineStyle: { width: 2.6, color: PALETTE.blend }, itemStyle: { color: PALETTE.blend }, symbolSize: 5 }
+    ];
+    if (e.outcome != null) {
+      series.push({ name: "ABS outcome", type: "line", data: [],
+        markLine: { symbol: "none", label: { formatter: "ABS: " + fmt(e.outcome, true) + "%", position: "insideEndTop", color: PALETTE.outcome },
+          lineStyle: { color: PALETTE.outcome, type: "solid", width: 1.6 },
+          data: [{ yAxis: e.outcome }] }, itemStyle: { color: PALETTE.outcome } });
+    }
+    chart.setOption({
+      grid: { left: 48, right: 18, top: 38, bottom: 34 },
+      legend: { top: 6, data: ["AusNow blend", "Labour read", "Expenditure read"].concat(e.outcome != null ? ["ABS outcome"] : []),
+                textStyle: { fontSize: 12 } },
+      tooltip: { trigger: "axis", confine: true, formatter: params => {
+          const d = params[0].axisValueLabel || params[0].value[0];
+          let html = "<b>" + d + "</b>";
+          for (const p of params) {
+            if (p.seriesName.includes("band")) continue;
+            if (p.value && p.value[1] != null) html += "<br>" + p.marker + p.seriesName + ": " + fmt(p.value[1], true) + "%";
+          }
+          const moved = impactsByDate[e.quarter + "|" + d];
+          if (moved) { html += "<br><br><b>Releases this run:</b>";
+            for (const m of moved) html += "<br>" + m.release + ": " + fmt(m.impact_pp, true) + " pp"; }
+          return html;
+        } },
+      xAxis: { type: "category", data: e.dates, axisLabel: { fontSize: 11 }, axisLine: { lineStyle: { color: "#b9c2cf" } } },
+      yAxis: { type: "value", name: "% q/q", nameTextStyle: { color: "#8b97a8" }, scale: true,
+               axisLabel: { formatter: v => fmt(v, true), fontSize: 11 },
+               splitLine: { lineStyle: { color: "#edf0f4" } } },
+      series
+    }, true);
+  }
+  const tabs = E("evoTabs");
+  const shown = liveEvos.length ? liveEvos : archived.slice(0, 1);
+  shown.forEach((e, i) => {
+    const b = document.createElement("button");
+    b.textContent = e.quarter_pretty; if (i === 0) b.className = "on";
+    b.onclick = () => { tabs.querySelectorAll("button").forEach(x => x.className = ""); b.className = "on"; draw(e); };
+    tabs.appendChild(b);
+  });
+  if (archived.length) {
+    const sel = document.createElement("select");
+    sel.innerHTML = '<option value="">Archive…</option>' +
+      archived.map((e, i) => '<option value="' + i + '">' + e.quarter_pretty + "</option>").join("");
+    sel.onchange = () => { if (sel.value !== "") { tabs.querySelectorAll("button").forEach(x => x.className = ""); draw(archived[+sel.value]); } };
+    tabs.appendChild(sel);
+  }
+  if (shown.length) draw(shown[0]);
+})();
+
+/* ---- release impact table ---- */
+(function () {
+  const tb = E("impTable").querySelector("tbody");
+  const rows = (DATA.impacts || []).slice(0, 40);
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" class="note">No release impacts recorded yet.</td></tr>'; return; }
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    const arrow = r.impact_pp > 0.0005 ? "▲" : r.impact_pp < -0.0005 ? "▼" : "·";
+    const cls = r.impact_pp > 0.0005 ? "up" : r.impact_pp < -0.0005 ? "down" : "";
+    tr.innerHTML = "<td>" + r.publication_date + "</td><td>" + r.release +
+      (r.kind === "revision" ? ' <span class="badge">revision</span>' : "") + "</td><td>" +
+      r.target_quarter + "</td><td>" + (r.component || "") + '</td><td class="num imp ' + cls + '">' +
+      arrow + " " + fmt(r.impact_pp, true) + '</td><td class="num">' + fmt(r.new_estimate, true) + "%</td>";
+    tb.appendChild(tr);
+  }
+})();
+
+/* ---- contributions bar ---- */
+(function () {
+  const c = DATA.contributions;
+  if (!c) { E("contribChart").style.display = "none"; return; }
+  E("contribQ").textContent = "— expenditure read, " + c.quarter;
+  mkChart(E("contribChart")).setOption({
+    grid: { left: 110, right: 30, top: 16, bottom: 28 },
+    tooltip: { formatter: p => p.name + ": " + fmt(p.value, true) + " pp" },
+    xAxis: { type: "value", name: "pp", axisLabel: { fontSize: 11 }, splitLine: { lineStyle: { color: "#edf0f4" } } },
+    yAxis: { type: "category", data: c.labels.slice().reverse(), axisLabel: { fontSize: 12 } },
+    series: [{ type: "bar", data: c.values.slice().reverse().map(v => ({
+        value: v, itemStyle: { color: v >= 0 ? "#4f86c6" : "#a63d40" } })),
+      barWidth: "62%", label: { show: true, position: "right", fontSize: 11, formatter: p => fmt(p.value, true) } }]
+  });
+})();
+
+/* ---- upcoming + NAB + stale ---- */
+(function () {
+  const host = E("upcoming");
+  for (const u of (DATA.upcoming || [])) {
+    const d = document.createElement("div"); d.className = "chip";
+    d.innerHTML = '<span class="d">' + u.date + "</span> " + u.title + (u.estimated ? ' <span class="badge">est.</span>' : "");
+    host.appendChild(d);
+  }
+  const nab = document.createElement("div");
+  nab.className = "chip " + (DATA.nab && DATA.nab.available ? "nab-ok" : "nab-wait");
+  nab.textContent = DATA.nab ? DATA.nab.message : "NAB survey: status unknown";
+  host.appendChild(nab);
+  if (DATA.stale && DATA.stale.length) {
+    E("staleBox").innerHTML = '<div class="stale">⚠ Using previous data for: ' +
+      DATA.stale.map(s => s.label + " (as of " + s.latest + ")").join("; ") + "</div>";
+  }
+})();
+
+/* ---- backtest + weight path ---- */
+(function () {
+  if (!DATA.backtest) { E("btChart").style.display = "none"; }
+  else {
+    const days = DATA.backtest.days;
+    const nice = { labour: "Labour read", expenditure: "Expenditure read", blend: "AusNow blend", ar1: "AR(1) benchmark", hist_mean: "Historical mean" };
+    const colors = { labour: PALETTE.labour, expenditure: PALETTE.exp, blend: PALETTE.blend, ar1: "#8b97a8", hist_mean: "#c9b458" };
+    mkChart(E("btChart")).setOption({
+      title: { text: "Backtest accuracy: RMSE by days until ABS release", left: 8, top: 6, textStyle: { fontSize: 13, fontWeight: 600 } },
+      grid: { left: 48, right: 18, top: 64, bottom: 34 },
+      legend: { top: 28, textStyle: { fontSize: 11.5 } },
+      tooltip: { trigger: "axis" },
+      xAxis: { type: "category", data: days, name: "days to release", inverse: true,
+               nameLocation: "middle", nameGap: 24, axisLabel: { fontSize: 11 } },
+      yAxis: { type: "value", name: "RMSE (pp)", axisLabel: { fontSize: 11 }, splitLine: { lineStyle: { color: "#edf0f4" } } },
+      series: DATA.backtest.series.map(s => ({
+        name: nice[s.model] || s.model, type: "line", data: s.rmse, smooth: true,
+        lineStyle: { width: s.model === "blend" ? 2.6 : 1.4, color: colors[s.model] },
+        itemStyle: { color: colors[s.model] }, symbolSize: 4 }))
+    });
+  }
+  if (!DATA.weights) { E("wChart").style.display = "none"; }
+  else {
+    mkChart(E("wChart")).setOption({
+      title: { text: "Blend weight on the labour read across the release cycle", left: 8, top: 6, textStyle: { fontSize: 13, fontWeight: 600 } },
+      grid: { left: 48, right: 18, top: 44, bottom: 34 },
+      tooltip: { trigger: "axis", valueFormatter: v => Math.round(v * 100) + "%" },
+      xAxis: { type: "category", data: DATA.weights.days, inverse: true, name: "days to release",
+               nameLocation: "middle", nameGap: 24, axisLabel: { fontSize: 11 } },
+      yAxis: { type: "value", min: 0, max: 1, axisLabel: { formatter: v => Math.round(v * 100) + "%", fontSize: 11 },
+               splitLine: { lineStyle: { color: "#edf0f4" } } },
+      series: [{ type: "line", data: DATA.weights.w, areaStyle: { color: "rgba(79,134,198,0.12)" },
+                 lineStyle: { color: PALETTE.labour, width: 2 }, itemStyle: { color: PALETTE.labour }, symbolSize: 4 }]
+    });
+  }
+})();
+
+/* ---- archive table ---- */
+(function () {
+  const a = DATA.archived || [];
+  if (!a.length) return;
+  const box = E("archiveBox");
+  box.innerHTML = "<h2>Retired quarters: final nowcast vs ABS first print</h2>" +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Quarter</th><th style="text-align:right">ABS first print</th>' +
+    '<th style="text-align:right">Final blend</th><th style="text-align:right">Error</th></tr></thead><tbody>' +
+    a.map(r => "<tr><td>" + r.quarter_pretty + '</td><td class="num">' + fmt(r.outcome, true) +
+      '%</td><td class="num">' + fmt(r.final_blend, true) + '%</td><td class="num">' +
+      fmt(r.err_blend, true) + " pp</td></tr>").join("") + "</tbody></table></div>";
+})();
+</script>
+</body>
+</html>

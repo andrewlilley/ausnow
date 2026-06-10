@@ -1,0 +1,2 @@
+"run_date","target_quarter","status","model_only","blend","labour_read","expenditure_read","w_labour","days_to_release","band","months_hours_observed","c_hfce","c_dwell","c_otc","c_businv","c_pubcons","c_pubinv","c_exports","c_imports","c_inventories","c_discrepancy","bias_correction"
+"2026-06-10","2026Q2","current","FALSE","0.9618","1.0956","-0.0967","0.8878","84","0.495","1","-0.5288","0.0381","-0.0115","0.1726","0.1853","0.0516","0.5058","-0.3838","-0.0649","-0.0509","-0.0103"
