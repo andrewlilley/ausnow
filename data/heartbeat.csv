@@ -1,2 +1,3 @@
 "run_date","status","note"
 "2026-06-10","ok","releases: natacc,mhsi,trade,approvals,construction,capex,busind,bop,cpi,cpi_old,vacancies; stale: "
+"2026-06-11","ok","releases: initial; stale: "
