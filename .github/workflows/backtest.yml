@@ -25,27 +25,34 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Cache R packages
+        uses: actions/cache@v4
         with:
-          cache-version: 1
-          packages: |
-            cran::readabs
-            cran::readrba
-            cran::dplyr
-            cran::tidyr
-            cran::readxl
-            cran::jsonlite
-            cran::testthat
-            cran::zoo
-            cran::purrr
-            cran::stringr
+          path: ${{ runner.temp }}/Library
+          key: rlibs-${{ runner.os }}-v2
+
+      - name: Install R packages (Posit binary CRAN)
+        env:
+          R_LIBS_USER: ${{ runner.temp }}/Library
+        run: |
+          mkdir -p "$R_LIBS_USER"
+          Rscript -e 'need <- c("readabs","readrba","dplyr","tidyr","readxl",
+                                "jsonlite","testthat","zoo","purrr","stringr")
+                      have <- rownames(installed.packages())
+                      miss <- setdiff(need, have)
+                      if (length(miss)) install.packages(miss,
+                        repos = "https://packagemanager.posit.co/cran/__linux__/noble/latest")
+                      stopifnot(length(setdiff(need, rownames(installed.packages()))) == 0)'
 
       - name: Run backtest on the latest committed vintage
+        env:
+          R_LIBS_USER: ${{ runner.temp }}/Library
         run: Rscript scripts/backtest.R
 
       - name: Refresh nowcast with new weights and rebuild site
         env:
           AUSNOW_FORCE: "1"
+          R_LIBS_USER: ${{ runner.temp }}/Library
         run: Rscript scripts/run_nowcast.R
 
       - name: Commit results
