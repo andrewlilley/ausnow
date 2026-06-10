@@ -1,0 +1,62 @@
+name: backtest
+
+# Manual job: re-runs the full pseudo-real-time backtest (~1.5 h) and commits
+# the refreshed blend weights, uncertainty bands, and results doc. Run it
+# occasionally (e.g. after each GDP release) or after adding an indicator.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nowcast          # don't run while a nowcast run is committing
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          cache-version: 1
+          packages: |
+            cran::readabs
+            cran::readrba
+            cran::dplyr
+            cran::tidyr
+            cran::readxl
+            cran::jsonlite
+            cran::testthat
+            cran::zoo
+            cran::purrr
+            cran::stringr
+
+      - name: Run backtest on the latest committed vintage
+        run: Rscript scripts/backtest.R
+
+      - name: Refresh nowcast with new weights and rebuild site
+        env:
+          AUSNOW_FORCE: "1"
+        run: Rscript scripts/run_nowcast.R
+
+      - name: Commit results
+        run: |
+          git config user.name "ausnow-bot"
+          git config user.email "ausnow-bot@users.noreply.github.com"
+          git add data docs site
+          if git diff --cached --quiet; then
+            echo "Backtest produced no changes."
+          else
+            git commit -m "backtest refresh $(date -u +%F)"
+            git pull --rebase origin main
+            git push
+          fi

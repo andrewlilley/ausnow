@@ -17,6 +17,7 @@ permissions:
   pages: write
   id-token: write
 
+# One run at a time; a NAB upload arriving mid-run queues rather than collides.
 concurrency:
   group: nowcast
   cancel-in-progress: false
@@ -34,6 +35,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
+          cache-version: 1
           packages: |
             cran::readabs
             cran::readrba
@@ -46,7 +48,7 @@ jobs:
             cran::purrr
             cran::stringr
 
-      - name: Run tests
+      - name: Run tests (hermetic, no network)
         run: Rscript tests/run_tests.R
 
       - name: Run nowcast pipeline
@@ -67,6 +69,8 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
