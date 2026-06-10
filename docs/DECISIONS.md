@@ -110,3 +110,14 @@ year of repo growth. The pipeline keeps all daily vintages for 90 days, then thi
 to the first vintage of each month. Nothing user-facing is lost — every nowcast and
 attribution lives in the CSVs; old snapshots only serve future real-time backtests,
 where monthly granularity is an acceptable compromise. Reversible: yes. **LOW**
+
+**D19. Ragged-edge shrinkage for monthly bridge regressors.** First backtest pass
+showed the expenditure read's RMSE spiking to ~2.2 pp in the d=90-45 window (1-2
+months of the target quarter observed) and recovering to ~0.8 once all three months
+were in: the AR month-fill propagates single-month noise (worst for nominal goods
+trade) into the quarterly aggregate while bridge coefficients, estimated on complete
+quarters, over-react to it. Fix: shrink the partial-quarter regressor toward the
+no-in-quarter-data model fill in proportion to the unobserved share
+(x = fill + (months_observed/3) x (partial - fill)). A state-space filter would be
+the textbook treatment; linear shrinkage keeps the system transparent. Verified by
+backtest re-run. **MEDIUM**

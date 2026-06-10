@@ -102,8 +102,23 @@ build_qframe <- function(data, target_q) {
         if (nrow(mm) >= 24) df <- data.frame(date = mm$date, value = mm$value / mm$value_cpi)
       }
     }
-    df <- ar_fill_months(df, target_q)
-    monthly_to_q_growth(df)
+    qg <- monthly_to_q_growth(ar_fill_months(df, target_q))
+    # Ragged-edge shrinkage (DECISIONS.md D19): with only 1-2 months of the
+    # target quarter observed, the AR month-fill propagates single-month noise
+    # into the quarterly aggregate while bridge betas assume a full quarter.
+    # Shrink the partial-quarter estimate toward the no-in-quarter-data fill in
+    # proportion to the unobserved share.
+    m_obs <- sum(quarter_label(df$date) == target_q & !is.na(df$value))
+    if (m_obs >= 1 && m_obs <= 2) {
+      df0 <- df[quarter_label(df$date) != target_q, , drop = FALSE]
+      qg0 <- monthly_to_q_growth(ar_fill_months(df0, target_q))
+      i <- qg$quarter == target_q; i0 <- qg0$quarter == target_q
+      if (any(i) && any(i0)) {
+        sh <- m_obs / 3
+        qg$growth[i] <- qg0$growth[i0] + sh * (qg$growth[i] - qg0$growth[i0])
+      }
+    }
+    qg
   }
   q_growth_filled <- function(skey) {
     df <- get_series(data, skey)

@@ -14,6 +14,8 @@ for (f in list.files("R", pattern = "\\.R$", full.names = TRUE)) source(f)
 suppressMessages(library(dplyr))
 
 args <- commandArgs(trailingOnly = TRUE)
+aggregate_only <- "--aggregate-only" %in% args
+args <- setdiff(args, "--aggregate-only")
 vintage_arg <- if (length(args) >= 1) args[1] else NULL
 
 # data: newest vintage on disk unless one is passed explicitly
@@ -29,6 +31,10 @@ quarters <- gdp_g_all$quarter[gdp_g_all$quarter >= "2016Q1"]
 log_msg("Targets: %s..%s (%d quarters) x %d cycle points",
         quarters[1], utils::tail(quarters, 1), length(quarters), length(DAYS_GRID))
 
+if (aggregate_only && file.exists("data/backtest_runs.csv")) {
+  runs <- utils::read.csv("data/backtest_runs.csv")
+  log_msg("Aggregate-only: reusing %d rows from data/backtest_runs.csv", nrow(runs))
+} else {
 runs <- list()
 for (tq in quarters) {
   rel <- gdp_release_date(tq)
@@ -56,9 +62,16 @@ for (tq in quarters) {
 runs <- bind_rows(runs)
 dir.create("data", showWarnings = FALSE)
 utils::write.csv(runs, "data/backtest_runs.csv", row.names = FALSE)
+}
+
+# COVID quarters: GDP swings of several pp dominate squared errors and say
+# nothing about normal-cycle informativeness. Weights and the headline tables
+# are estimated ex-COVID; the full-sample table is reported alongside.
+COVID_Q <- c("2020Q1", "2020Q2", "2020Q3", "2020Q4", "2021Q1", "2021Q2")
+runs_x <- runs %>% filter(!target_quarter %in% COVID_Q)
 
 # ---- blend weight path: inverse-MSE on the labour vs expenditure reads -----
-wpath <- runs %>%
+wpath <- runs_x %>%
   group_by(days_to_release) %>%
   summarise(mse_lab = mean((labour - actual)^2, na.rm = TRUE),
             mse_exp = mean((expenditure - actual)^2, na.rm = TRUE),
@@ -76,6 +89,7 @@ runs$w <- stats::approx(ws$days_to_release, ws$w_labour, xout = runs$days_to_rel
 runs$blend <- ifelse(is.na(runs$labour), runs$expenditure,
               ifelse(is.na(runs$expenditure), runs$labour,
                      runs$w * runs$labour + (1 - runs$w) * runs$expenditure))
+runs_x <- runs %>% filter(!target_quarter %in% COVID_Q)   # now includes blend
 
 rmse_tab <- function(df) df %>%
   group_by(days_to_release) %>%
@@ -84,13 +98,15 @@ rmse_tab <- function(df) df %>%
             blend = sqrt(mean((blend - actual)^2, na.rm = TRUE)),
             ar1 = sqrt(mean((ar1 - actual)^2, na.rm = TRUE)),
             hist_mean = sqrt(mean((hist_mean - actual)^2, na.rm = TRUE)),
-            n = sum(!is.na(blend)), .groups = "drop") %>%
+            mae_blend = mean(abs(.data$blend - actual), na.rm = TRUE),
+            n = dplyr::n(), .groups = "drop") %>%
   arrange(desc(days_to_release))
 
 summary_full <- rmse_tab(runs)
+summary_x    <- rmse_tab(runs_x)
 summary_oos  <- rmse_tab(runs %>% filter(target_quarter >= "2022Q1"))
 
-long <- summary_full %>%
+long <- summary_x %>%
   tidyr::pivot_longer(c(labour, expenditure, blend, ar1, hist_mean),
                       names_to = "model", values_to = "rmse")
 utils::write.csv(long, PATHS$backtest, row.names = FALSE)
@@ -103,9 +119,12 @@ fmt_tab <- function(s) {
         collapse = "\n")
 }
 
-late <- summary_full[summary_full$days_to_release <= 20, ]
+late <- summary_x[summary_x$days_to_release <= 20, ]
 beats_ar_late <- all(late$blend < late$ar1)
-log_msg("Blend beats AR(1) in final weeks (full sample): %s", beats_ar_late)
+late_full <- summary_full[summary_full$days_to_release <= 20, ]
+beats_ar_late_full <- all(late_full$blend < late_full$ar1)
+log_msg("Blend beats AR(1) in final weeks: ex-COVID %s | full %s",
+        beats_ar_late, beats_ar_late_full)
 
 results_md <- paste0(
   "## Backtest results\n\n",
@@ -113,7 +132,13 @@ results_md <- paste0(
   "Pseudo-real-time, expanding windows, ", length(quarters), " target quarters (",
   quarters[1], "-", utils::tail(quarters, 1), "), evaluated at ", length(DAYS_GRID),
   " points in the release cycle. RMSE in percentage points of q/q GDP growth.\n\n",
-  "### Full sample (", quarters[1], "-", utils::tail(quarters, 1), ")\n\n",
+  "### Headline: excluding COVID quarters (2020Q1-2021Q2)\n\n",
+  "COVID-era GDP swings of several percentage points dominate squared errors and are\n",
+  "not informative about normal-cycle accuracy; the blend weight path is estimated on\n",
+  "this sample. Both reads tracked the COVID collapse directionally, the labour read\n",
+  "far better (see full-sample table).\n\n",
+  fmt_tab(summary_x), "\n\n",
+  "### Full sample (", quarters[1], "-", utils::tail(quarters, 1), ", incl. COVID)\n\n",
   fmt_tab(summary_full), "\n\n",
   "### Out-of-sample check (targets 2022Q1 onward)\n\n",
   fmt_tab(summary_oos), "\n\n",
@@ -121,8 +146,9 @@ results_md <- paste0(
   "| Days to release | ", paste(ws$days_to_release, collapse = " | "), " |\n",
   "|---|", paste(rep("---", nrow(ws)), collapse = "|"), "|\n",
   "| w(labour) | ", paste(sprintf("%.2f", ws$w_labour), collapse = " | "), " |\n\n",
-  "Blend beats AR(1) at every grid point with <=20 days to release (full sample): **",
-  ifelse(beats_ar_late, "yes", "NO - investigate"), "**.\n")
+  "Blend beats AR(1) at every grid point with <=20 days to release: ex-COVID **",
+  ifelse(beats_ar_late, "yes", "NO - investigate"), "**, full sample **",
+  ifelse(beats_ar_late_full, "yes", "NO - investigate"), "**.\n")
 writeLines(results_md, "docs/backtest_results.md")
 log_msg("Backtest complete. Summary:\n%s",
         paste(utils::capture.output(print(as.data.frame(summary_full), digits = 3)), collapse = "\n"))
