@@ -63,9 +63,9 @@ site_payload <- function(run_date, vintage) {
         errs$outcome_first_print[errs$target_quarter == tq][1] else NULL
       evol[[tq]] <- list(
         quarter = tq, quarter_pretty = pretty_quarter(tq),
-        dates = h$run_date, blend = h$blend,
-        labour = h$labour_read, expenditure = h$expenditure_read,
-        band = h$band, outcome = outcome,
+        dates = I(h$run_date), blend = I(h$blend),
+        labour = I(h$labour_read), expenditure = I(h$expenditure_read),
+        band = I(h$band), outcome = outcome,
         release_date = format(gdp_release_date(tq)))
     }
   }
@@ -88,9 +88,9 @@ site_payload <- function(run_date, vintage) {
               c_pubinv = "Public inv.", c_exports = "Exports", c_imports = "Imports",
               c_inventories = "Inventories", c_discrepancy = "Discrepancy")
     contrib <- list(quarter = pretty_quarter(tq),
-                    labels = unname(cols),
-                    values = unname(vapply(names(cols), function(cn)
-                      as.numeric(last[[cn]]) %||% NA_real_, 0)))
+                    labels = I(unname(cols)),
+                    values = I(unname(vapply(names(cols), function(cn)
+                      as.numeric(last[[cn]]) %||% NA_real_, 0))))
   }
 
   # upcoming releases + NAB status
@@ -112,13 +112,13 @@ site_payload <- function(run_date, vintage) {
 
   # backtest curves for the methodology section
   backtest <- if (!is.null(bt)) {
-    list(days = sort(unique(bt$days_to_release), decreasing = TRUE),
+    list(days = I(sort(unique(bt$days_to_release), decreasing = TRUE)),
          series = lapply(split(bt, bt$model), function(s) {
            s <- s[order(-s$days_to_release), ]
-           list(model = s$model[1], rmse = s$rmse)
+           list(model = s$model[1], rmse = I(s$rmse))
          }) |> unname())
   } else NULL
-  weights <- if (!is.null(wts)) list(days = wts$days_to_release, w = wts$w_labour) else NULL
+  weights <- if (!is.null(wts)) list(days = I(wts$days_to_release), w = I(wts$w_labour)) else NULL
 
   archived <- if (!is.null(errs) && nrow(errs) > 0) {
     e <- errs[order(errs$target_quarter, decreasing = TRUE), ]

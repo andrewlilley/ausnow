@@ -129,11 +129,11 @@ const fmt = (x, s) => x == null || isNaN(x) ? "–" : (s && x > 0 ? "+" : "") + 
 const E = id => document.getElementById(id);
 const PALETTE = { blend: "#16406e", labour: "#4f86c6", exp: "#a63d40", outcome: "#1c7c54" };
 const charts = [];
-function mkChart(el) { const c = echarts.init(el, null, { renderer: "canvas" }); charts.push(c); return c; }
+function mkChart(el) { if (typeof echarts === "undefined") throw new Error("charts unavailable"); const c = echarts.init(el, null, { renderer: "canvas" }); charts.push(c); return c; }
 addEventListener("resize", () => charts.forEach(c => c.resize()));
 
 /* ---- headline cards ---- */
-(function () {
+(function () { try {
   const host = E("cards");
   if (!DATA.cards || !DATA.cards.length) {
     host.innerHTML = '<div class="card"><div class="q">No live target quarter</div><div class="note">The latest national accounts cover ' +
@@ -156,12 +156,12 @@ addEventListener("resize", () => charts.forEach(c => c.resize()));
       "<div>Weight on labour<b>" + Math.round(c.w_labour * 100) + "%</b></div></div>";
     host.appendChild(d);
   }
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS print: " +
   DATA.last_published.quarter_pretty + " " + fmt(DATA.last_published.growth, true) + "% q/q";
 
 /* ---- evolution chart with quarter tabs + archive selector ---- */
-(function () {
+(function () { try {
   const evos = DATA.evolution || [];
   if (!evos.length) return;
   const live = new Set((DATA.cards || []).map(c => c.quarter));
@@ -173,6 +173,7 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
     (impactsByDate[r.target_quarter + "|" + r.run_date] ||= []).push(r);
   }
   function draw(e) {
+    const outcome = (typeof e.outcome === "number") ? e.outcome : null;
     const bandLo = e.blend.map((b, i) => b == null || e.band[i] == null ? null : b - e.band[i]);
     const bandW = e.blend.map((b, i) => b == null || e.band[i] == null ? null : 2 * e.band[i]);
     const series = [
@@ -188,15 +189,15 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
       { name: "AusNow blend", type: "line", data: e.dates.map((d, i) => [d, e.blend[i]]),
         lineStyle: { width: 2.6, color: PALETTE.blend }, itemStyle: { color: PALETTE.blend }, symbolSize: 5 }
     ];
-    if (e.outcome != null) {
+    if (outcome != null) {
       series.push({ name: "ABS outcome", type: "line", data: [],
-        markLine: { symbol: "none", label: { formatter: "ABS: " + fmt(e.outcome, true) + "%", position: "insideEndTop", color: PALETTE.outcome },
+        markLine: { symbol: "none", label: { formatter: "ABS: " + fmt(outcome, true) + "%", position: "insideEndTop", color: PALETTE.outcome },
           lineStyle: { color: PALETTE.outcome, type: "solid", width: 1.6 },
-          data: [{ yAxis: e.outcome }] }, itemStyle: { color: PALETTE.outcome } });
+          data: [{ yAxis: outcome }] }, itemStyle: { color: PALETTE.outcome } });
     }
     chart.setOption({
       grid: { left: 48, right: 18, top: 38, bottom: 34 },
-      legend: { top: 6, data: ["AusNow blend", "Labour read", "Expenditure read"].concat(e.outcome != null ? ["ABS outcome"] : []),
+      legend: { top: 6, data: ["AusNow blend", "Labour read", "Expenditure read"].concat(outcome != null ? ["ABS outcome"] : []),
                 textStyle: { fontSize: 12 } },
       tooltip: { trigger: "axis", confine: true, formatter: params => {
           const d = params[0].axisValueLabel || params[0].value[0];
@@ -233,10 +234,10 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
     tabs.appendChild(sel);
   }
   if (shown.length) draw(shown[0]);
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 
 /* ---- release impact table ---- */
-(function () {
+(function () { try {
   const tb = E("impTable").querySelector("tbody");
   const rows = (DATA.impacts || []).slice(0, 40);
   if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" class="note">No release impacts recorded yet.</td></tr>'; return; }
@@ -250,12 +251,12 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
       arrow + " " + fmt(r.impact_pp, true) + '</td><td class="num">' + fmt(r.new_estimate, true) + "%</td>";
     tb.appendChild(tr);
   }
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 
 /* ---- contributions bar ---- */
-(function () {
+(function () { try {
   const c = DATA.contributions;
-  if (!c) { E("contribChart").style.display = "none"; return; }
+  if (!c || !c.labels) { E("contribChart").style.display = "none"; return; }
   E("contribQ").textContent = "— expenditure read, " + c.quarter;
   mkChart(E("contribChart")).setOption({
     grid: { left: 110, right: 30, top: 16, bottom: 28 },
@@ -266,10 +267,10 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
         value: v, itemStyle: { color: v >= 0 ? "#4f86c6" : "#a63d40" } })),
       barWidth: "62%", label: { show: true, position: "right", fontSize: 11, formatter: p => fmt(p.value, true) } }]
   });
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 
 /* ---- upcoming + NAB + stale ---- */
-(function () {
+(function () { try {
   const host = E("upcoming");
   for (const u of (DATA.upcoming || [])) {
     const d = document.createElement("div"); d.className = "chip";
@@ -284,11 +285,11 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
     E("staleBox").innerHTML = '<div class="stale">⚠ Using previous data for: ' +
       DATA.stale.map(s => s.label + " (as of " + s.latest + ")").join("; ") + "</div>";
   }
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 
 /* ---- backtest + weight path ---- */
-(function () {
-  if (!DATA.backtest) { E("btChart").style.display = "none"; }
+(function () { try {
+  if (!DATA.backtest || !DATA.backtest.series) { E("btChart").style.display = "none"; }
   else {
     const days = DATA.backtest.days;
     const nice = { labour: "Labour read", expenditure: "Expenditure read", blend: "AusNow blend", ar1: "AR(1) benchmark", hist_mean: "Historical mean" };
@@ -307,7 +308,7 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
         itemStyle: { color: colors[s.model] }, symbolSize: 4 }))
     });
   }
-  if (!DATA.weights) { E("wChart").style.display = "none"; }
+  if (!DATA.weights || !DATA.weights.days) { E("wChart").style.display = "none"; }
   else {
     mkChart(E("wChart")).setOption({
       title: { text: "Blend weight on the labour read across the release cycle", left: 8, top: 6, textStyle: { fontSize: 13, fontWeight: 600 } },
@@ -321,10 +322,10 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
                  lineStyle: { color: PALETTE.labour, width: 2 }, itemStyle: { color: PALETTE.labour }, symbolSize: 4 }]
     });
   }
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 
 /* ---- archive table ---- */
-(function () {
+(function () { try {
   const a = DATA.archived || [];
   if (!a.length) return;
   const box = E("archiveBox");
@@ -334,7 +335,7 @@ E("stamp").textContent = "Last updated " + DATA.generated + " · latest ABS prin
     a.map(r => "<tr><td>" + r.quarter_pretty + '</td><td class="num">' + fmt(r.outcome, true) +
       '%</td><td class="num">' + fmt(r.final_blend, true) + '%</td><td class="num">' +
       fmt(r.err_blend, true) + " pp</td></tr>").join("") + "</tbody></table></div>";
-})();
+} catch (e) { console.warn("AusNow section failed:", e); } })();
 </script>
 </body>
 </html>
