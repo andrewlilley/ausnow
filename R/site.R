@@ -16,6 +16,7 @@ build_site <- function(run_date, vintage) {
   parts <- strsplit(tpl, "/*__AUSNOW_DATA__*/null", fixed = TRUE)[[1]]
   if (length(parts) != 2) { log_msg("WARN site: data token not found in template"); return(invisible(FALSE)) }
   out <- paste0(parts[1], json, parts[2])
+  out <- gsub("__REPO__", repo_slug(), out, fixed = TRUE)
   writeLines(out, file.path(PATHS$site, "index.html"))
   log_msg("Site rebuilt: site/index.html (%.0f kB)", nchar(out) / 1024)
   invisible(TRUE)
@@ -145,6 +146,16 @@ site_payload <- function(run_date, vintage) {
     weights = weights,
     archived = archived
   )
+}
+
+#' "owner/repo" from the git remote (or a GitHub Actions env var), for links.
+repo_slug <- function() {
+  slug <- Sys.getenv("GITHUB_REPOSITORY", "")
+  if (nzchar(slug)) return(slug)
+  url <- tryCatch(system2("git", c("config", "--get", "remote.origin.url"),
+                          stdout = TRUE, stderr = FALSE), error = function(e) "")
+  m <- regmatches(url, regexpr("github\\.com[:/]([^/]+/[^/.]+)", url))
+  if (length(m) == 1) sub("github\\.com[:/]", "", m) else "ausnow"
 }
 
 pretty_quarter <- function(q) {

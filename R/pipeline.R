@@ -54,6 +54,7 @@ run_pipeline <- function() {
   }
 
   save_vintage(vintage, run_date)
+  prune_vintages(run_date)
   n_stale <- sum(!vintage$status$ok)
   heartbeat(run_date,
             if (n_stale > 0) "degraded" else "ok",

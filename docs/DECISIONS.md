@@ -88,3 +88,25 @@ avoid degenerate corner solutions in small samples. Published in methodology.md.
 (AEST) and 00:30 UTC in summer (AEDT); 02:05 UTC is safely after the release window
 year-round, allowing for GitHub's cron jitter. Plus `workflow_dispatch` and a push
 trigger on `data/manual/nab/**`. **LOW**
+
+**D15. Monthly CPI deflator splice.** The new complete monthly CPI (6401.0) starts
+April 2024; the discontinued Monthly CPI Indicator (6484.0) covers Sep 2017 –
+Sep 2025 and remains downloadable. The MHSI deflator ratio-splices the two at their
+overlap. If 6484.0 ever disappears from the ABS site, the fetch degrades gracefully
+and the bridge runs on a shorter deflated sample. **LOW**
+
+**D16. Empty NAB folder is a normal state, not a fetch failure.** The drop folder
+being empty produces an "ok" status with a "model runs without NAB" note and the
+site's awaiting-file chip — never a stale-data warning or a degraded heartbeat.
+**LOW**
+
+**D17. Backtest runtime.** Full pseudo-real-time backtest (41 quarters x 10 cycle
+points, all bridges re-estimated each time) takes ~1-1.5 h single-threaded. It is a
+manual/occasional job (`scripts/backtest.R`), not part of the daily pipeline, so
+clarity was preferred over speed. **LOW**
+
+**D18. Vintage retention.** A daily snapshot is ~0.7 MB; unpruned that is ~180 MB a
+year of repo growth. The pipeline keeps all daily vintages for 90 days, then thins
+to the first vintage of each month. Nothing user-facing is lost — every nowcast and
+attribution lives in the CSVs; old snapshots only serve future real-time backtests,
+where monthly granularity is an acceptable compromise. Reversible: yes. **LOW**

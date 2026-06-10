@@ -204,6 +204,22 @@ load_prev_vintage <- function(run_date) {
   load_vintage(dirs[length(dirs)])
 }
 
+#' Prune old snapshots: keep all vintages from the last `keep_days`, then only
+#' the first vintage of each month (the per-run nowcast lives in the CSVs; old
+#' snapshots are only needed for future real-time backtests, where monthly
+#' granularity is enough). See DECISIONS.md D18.
+prune_vintages <- function(today = ausnow_today(), keep_days = 90) {
+  if (!dir.exists(PATHS$vintages)) return(invisible(0))
+  dirs <- sort(list.dirs(PATHS$vintages, recursive = FALSE))
+  dates <- suppressWarnings(as.Date(basename(dirs)))
+  old <- !is.na(dates) & dates < (today - keep_days)
+  keep_month <- !duplicated(format(dates, "%Y-%m"))
+  drop <- dirs[old & !keep_month]
+  for (d in drop) unlink(d, recursive = TRUE)
+  if (length(drop) > 0) log_msg("Pruned %d old vintage snapshot(s)", length(drop))
+  invisible(length(drop))
+}
+
 #' Diff two vintages -> detected releases: one row per source whose content
 #' changed (new observations or revisions).
 detect_releases <- function(new, prev) {
