@@ -1,0 +1,17 @@
+"key","ok","stale","note","latest"
+"natacc",TRUE,FALSE,"",2026-03-01
+"hours",TRUE,FALSE,"",2026-04-01
+"lfs",TRUE,FALSE,"",2026-04-01
+"mhsi",TRUE,FALSE,"",2026-04-01
+"trade",TRUE,FALSE,"",2026-04-01
+"approvals",TRUE,FALSE,"",2026-04-01
+"construction",TRUE,FALSE,"",2026-03-01
+"capex",TRUE,FALSE,"",2026-03-01
+"busind",TRUE,FALSE,"",2026-03-01
+"bop",TRUE,FALSE,"",2026-03-01
+"cpi",TRUE,FALSE,"",2026-05-01
+"cpi_old",TRUE,FALSE,"",2025-09-01
+"vacancies",TRUE,FALSE,"",2026-02-15
+"gfs",TRUE,FALSE,"",2026-01-01
+"rba_credit",TRUE,FALSE,"",2026-04-30
+"nab",TRUE,FALSE,"drop folder empty; model runs without NAB",NA
