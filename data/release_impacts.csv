@@ -1,2 +1,4 @@
 "run_date","publication_date","release","source_key","kind","target_quarter","old_estimate","new_estimate","impact_pp","component"
 "2026-06-10","2026-06-10","National Accounts (GDP)","natacc","new_data","2026Q2","0.9509","0.9509","0","all"
+"2026-06-25","2026-06-25","Labour Force Survey","hours","new_data","2026Q2","0.9063","0.5189","-0.3874","labour"
+"2026-06-25","2026-06-25","Household Spending Indicator","mhsi","new_data","2026Q2","0.5189","0.609","0.0901","hfce"
