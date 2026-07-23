@@ -4,3 +4,5 @@
 "2026-06-25","2026-06-25","Household Spending Indicator","mhsi","new_data","2026Q2","0.5189","0.609","0.0901","hfce"
 "2026-07-01","2026-07-01","Building Approvals","approvals","new_data","2026Q2","0.599","0.5925","-0.0064","dwell"
 "2026-07-01","2026-07-01","Building Approvals","approvals","new_data","2026Q3","0.8674","0.8814","0.014","dwell"
+"2026-07-23","2026-07-23","Labour Force Survey","hours","new_data","2026Q2","0.5868","0.4967","-0.0901","labour"
+"2026-07-23","2026-07-23","Labour Force Survey","hours","new_data","2026Q3","0.873","0.8448","-0.0282","labour"
