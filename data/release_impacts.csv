@@ -12,3 +12,5 @@
 "2026-08-04","2026-08-04","Household Spending Indicator","mhsi","new_data","2026Q3","0.8507","0.889","0.0383","hfce"
 "2026-08-20","2026-08-20","Labour Force Survey","hours","new_data","2026Q2","0.5347","0.4917","-0.043","labour"
 "2026-08-20","2026-08-20","Labour Force Survey","hours","new_data","2026Q3","0.7922","0.5158","-0.2765","labour"
+"2026-08-26","2026-08-26","Construction Work Done","construction","new_data","2026Q2","0.4898","0.4497","-0.0401","dwell/businv"
+"2026-08-26","2026-08-26","Construction Work Done","construction","new_data","2026Q3","0.4624","0.4695","0.0071","dwell/businv"
