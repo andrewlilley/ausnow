@@ -18,3 +18,5 @@
 "2026-08-27","2026-08-27","Private New Capex","capex","new_data","2026Q2","0.4645","0.2894","-0.1751","businv"
 "2026-08-27","2026-08-27","Household Spending Indicator","mhsi","new_data","2026Q3","0.4605","0.4644","0.0039","hfce"
 "2026-08-27","2026-08-27","Private New Capex","capex","new_data","2026Q3","0.4644","0.4427","-0.0218","businv"
+"2026-08-31","2026-08-31","Business Indicators","busind","new_data","2026Q2","0.2903","0.2198","-0.0705","inventories"
+"2026-08-31","2026-08-31","Business Indicators","busind","new_data","2026Q3","0.4075","0.4388","0.0314","inventories"
